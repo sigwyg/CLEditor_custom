@@ -1,0 +1,402 @@
+<!DOCTYPE html 
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
+<head>
+<title>WYSIWYG-Edit</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script src="./jquery.js"></script>
+<script src="./jquery.cleditor.js"></script>
+<script src="./jquery.cleditor.icon.js"></script>
+<!--
+-->
+<script type="text/javascript">
+$(function(){
+        var editors = $("textarea.wysi").cleditor();
+        var titles  = $("textarea.wyst").cleditor({controls: "icon pastetext", height: 63});
+        
+        // for "Title" like WYSIWYG-Editor
+        $.each(titles, function(){ cleditor.disableEnterKey(this.doc); })
+
+        // Concat CLEditor-Object
+        $.merge(editors, titles);
+
+        // Execute function on click-event
+        $.cleditor.buttons.icon.popupContent.bind("click", function(){
+            setTimeout(function(){
+                $.each(editors, function(){ cleditor.disableImgResizing(this.doc); });
+            },500)
+        })
+
+        // execute once only when loaded
+        var ed = $("div.cleditorMain iframe");
+        $.each(ed, function(){
+            var tarFrame = this;
+            var tarFC  = tarFrame.contentWindow;
+            var tarDoc = tarFC.document;
+            
+            // for disable Image Resizing
+            cleditor.disableImgResizing(tarDoc);
+
+            // for focusing your mind on working-area
+            cleditor.focuseChange(tarFC);
+
+            // for Paste-text with delete HTML-Tag & Style
+            cleditor.cleanupPasteText(tarFrame);
+        })
+
+        // Sample
+        //   - CLEditor-Object
+        //
+        // $.each(editors, function(){
+        //     var editor  = this;
+        //     var tarDoc  = this.doc;
+        //     var frame   = this.$frame;
+        //     var toolbar = this.$toolbar;
+        // });
+});
+
+// --------------------------------------------------------------
+// Functions
+// --------------------------------------------------------------
+
+jQuery.extend(cleditor,{
+
+    // Disable Enter-key
+    //  - edDoc = iframe.document
+    disableEnterKey: function(edDoc){
+        $(edDoc).bind("keypress", function(e){
+            var keycode = (e.keyCode ? e.keyCode : e.which);
+            if(keycode == 13){ return false }
+        })
+    },
+
+    // Disable image-resizing with Designmode
+    //  - edDoc = iframe.document
+    //  - WebKit and Opera, No problem
+    disableImgResizing: function(edDoc){
+        // IE 6,7,8,9
+        if(!jQuery.support.htmlSerialize){
+            var imgs = $("img", edDoc);
+            $.each(imgs,function(){
+                this.attachEvent("onresizestart", function(e) { e.returnValue = false; }, false);
+            });
+        }
+        // Mozilla, Opera
+        if(jQuery.support.checkOn && jQuery.support.htmlSerialize){
+            // Mozilla
+            if(window.globalStorage){
+                edDoc.execCommand("enableObjectResizing", false, false);
+            }
+        }
+    },
+
+    // 1. Focuse your mind on working-area
+    // 2. Change something (background, color, ...etc.)
+    //  - edDoc = iframe.document
+    focuseChange: function(edFC){
+        var edDoc  = edFC.document;
+        var edBody = $(edDoc).find("body")[0];
+        
+        // IE 6,7,8,9
+        if(!jQuery.support.htmlSerialize){
+            $(edDoc).bind("beforedeactivate beforeactivate", function(e){
+                if(e.type == 'beforedeactivate'){ $(edBody).css("background-color", "#ffffff"); }
+                if(e.type == 'beforeactivate'){   $(edBody).css("background-color", "#ffe5e5"); }
+            })
+        }
+        // Other Browser
+        else {
+            $(edFC).bind("focus", function(){ $(edBody).css("background-color", "#ffe5e5"); });
+            $(edFC).bind("blur", function(){  $(edBody).css("background-color", "#ffffff"); });
+        }
+    },
+
+    // for Paste-text with delete HTML-Tag & Styles
+    //  - edFrame = iframe
+    // 
+    // 1. set contextFlag
+    // 2. keydown -> focus(pasteText)
+    // 3. onpaste -> overwrite textarea with clipboardData
+    // 4. setTimeout(keydown) and setTimeout(onpaste)
+    cleanupPasteText: function(edFrame){
+        var edFC       = edFrame.contentWindow;
+        var edDoc      = edFC.document;
+        var edBody     = $(edDoc).find("body")[0];
+        var parentBody = $('body', parent.document)[0];
+        var textarea   = $('#paste', parentBody)[0];
+        
+        //make Paste-area
+        if(!textarea){
+            textarea = $('<textarea />')
+                            .attr('id', 'paste')
+                            .css({
+                                'position': 'absolute',
+                                'top': '400px',
+                                'left': '600px',
+                                'z-index': '9999',
+                                'width': '200px',
+                                'height': '200px',
+                                'opacity': '1'
+                            })
+                            .appendTo(parentBody)
+                            ;
+        }
+
+        // check Opened context-menu
+        $(edDoc).bind("contextmenu", function(e) {
+            //console.log('centext');
+            cleditor.contextFlag = 'contextmenu';    
+            //e.preventDefault();
+        });
+
+        //for IE & WebKit
+        //  - Paste from context-menu
+        edBody.onpaste = function(e){ 
+            // for IE
+            var range;
+            if(document.selection){
+                range = document.selection.createRange();
+            }
+            cleditor.onpaste(e,textarea,edFC,edDoc,edBody,range)
+        };
+        
+        // for Mozilla only
+        //   - bind paste-event
+        $(edDoc).bind("paste", function(e) {
+            // IE and Opera, Do not touch!
+            // in WebKit, <C-v> and after context-menu-paste    
+            // in Mozilla, Only fire from context-menu
+
+            // Mozilla
+            if(window.globalStorage){
+                $(textarea).val( cleditor.getClipText(e) );
+                
+                // Move Text to WYSIWYG-area
+                setTimeout(function(){
+                    cleditor.moveText(textarea,edFC,edDoc,edBody);
+                }, 5);
+
+            }
+            e.preventDefault();
+        });
+
+        // bind <C-v>
+        //   - Opera do not touch!
+        $(edDoc).bind("keydown", function(e){
+            var keycode = (e.keyCode ? e.keyCode : e.which);
+            
+            if((e.metaKey && keycode == 86)
+                || (e.ctrlKey && keycode == 86)
+                ) {
+                // for IE 
+                var range;
+                if(document.selection){
+                    range = document.selection.createRange();
+                }
+
+                // IE and Mozilla
+                if(jQuery.support.checkOn){
+                    $(textarea).focus();
+                }
+
+                // Move Text to WYSIWYG-area
+                setTimeout(function(){
+                    cleditor.moveText(textarea,edFC,edDoc,edBody,range);
+                }, 5);
+            
+            } 
+        })
+    },
+
+    // get Clipboard-Data
+    //   - for IE, window.clipboardData.getData("Text")
+    //   - for WebKit, e.clipboardData.getData("Text")
+    //   - for Fx, alert security-policy
+    getClipText: function(e){
+        var clipdata;
+        if ( window.clipboardData ){ clipdata = window.clipboardData.getData("Text");    }
+        else if ( e.clipboardData ){ clipdata = e.clipboardData.getData("Text"); }
+        else {
+            // in Mozilla, Check netscape.security
+            try {
+                netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+            } 
+            catch (e) {
+                alert("You need set 'signed.applets.codebase_principal_support=true'at about:config'");
+                return clipdata;
+            }
+
+            // get the system clipboard object and transferable object.
+            var clip = Components.classes["@mozilla.org/widget/clipboard;1"].getService(Components.interfaces.nsIClipboard);
+            var trans = Components.classes["@mozilla.org/widget/transferable;1"].createInstance(Components.interfaces.nsITransferable);
+            
+            // we need to get the data from the clipboard
+            trans.addDataFlavor("text/unicode");
+            clip.getData(trans, clip.kGlobalClipboard);
+            var str       = new Object();
+            var strLength = new Object();
+
+            // retrieve the data from the transferable
+            trans.getTransferData("text/unicode", str, strLength);
+
+            // The variable str now holds the data from the clipboard.
+            // We need to convert the data back into a JavaScript string from a XPCOM object.
+            if (str) {
+                str = str.value.QueryInterface(Components.interfaces.nsISupportsString);
+                clipdata = str.data.substring(0, strLength.value / 2);
+            }
+        }
+
+        return clipdata;
+    },
+                  
+    // for WebKit's Clipboard
+    onpaste: function(e,textarea,edFC,edDoc,edBody,range){
+        //console.log('onpaste');
+
+        $(textarea).val( cleditor.getClipText(e) );
+                 
+        if(cleditor.contextFlag == 'contextmenu'){
+            // Move Text to WYSIWYG-area
+            setTimeout(function(){ 
+                cleditor.moveText(textarea,edFC,edDoc,edBody,range);
+            }, 5);
+        }
+        
+        cleditor.contextFlag = '';
+        
+        // WebKit
+        if(!jQuery.support.checkOn){ e.preventDefault(); }
+    },
+
+    // check opened centext-menu
+    contextFlag: '',
+    
+    // Move text textarea to WYSIWYG-area
+    moveText: function(textarea,edFC,edDoc,edBody,range){
+        var pasteText  = $(textarea).val().replace(/\r|\n/g, '<br>');
+        var origText   = $(edBody).html();
+
+        //for IE
+        if(document.selection){ range.pasteHTML( pasteText ); }
+        //Mozilla and WebKit
+        else { edDoc.execCommand('insertHTML', 0, pasteText); }
+        
+        $(textarea).val('');
+        edFC.focus();
+    }
+});
+</script>
+<style>
+.cleditorMain {border:1px solid #999; padding:0 1px 1px; margin-bottom: 2em; background-color:white}
+.cleditorMain iframe {border:none; margin:0; padding:0}
+.cleditorMain textarea {border:none; margin:0; padding:0; overflow-y:scroll; font:10pt Arial,Verdana; resize:none; outline:none /* webkit grip focus */}
+.cleditorToolbar { background: url('./images/toolbar.gif') repeat}
+.cleditorGroup {float:left; height:26px}
+.cleditorButton {float:left; width:24px; height:24px; margin:1px 0 1px 0; background: url('./images/buttons.gif')}
+.cleditorDisabled {opacity:0.3; filter:alpha(opacity=30)}
+.cleditorDivider {float:left; width:1px; height:23px; margin:1px 0 1px 0; background:#CCC}
+.cleditorPopup {border:solid 1px #999; background-color:white; position:absolute; font:10pt Arial,Verdana; cursor:default; z-index:10000}
+.cleditorList div {padding:2px 4px 2px 4px}
+.cleditorList p,
+.cleditorList h1,
+.cleditorList h2,
+.cleditorList h3,
+.cleditorList h4,
+.cleditorList h5,
+.cleditorList h6,
+.cleditorList font {padding:0; margin:0; background-color:Transparent}
+.cleditorColor {width:150px; padding:1px 0 0 1px}
+.cleditorColor div {float:left; width:14px; height:14px; margin:0 1px 1px 0}
+.cleditorPrompt {background-color:#F6F7F9; padding:4px; font-size:8.5pt}
+.cleditorPrompt input,
+.cleditorPrompt textarea {font:8.5pt Arial,Verdana;}
+.cleditorMsg {background-color:#FDFCEE; width:150px; padding:4px; font-size:8.5pt}
+</style>
+</head>
+<!-- vim:set foldmethod=marker foldmarker=\:\ Start,\:\ End : -->
+<body class="">
+    
+    <h1>CLEditor</h1>
+
+    <p>カスタムしてみた (<a href="../for_simple/index.html">Origin</a>)</p>
+
+    <ul>
+    <li>タイトル用に改行禁止</li>
+    <li>フォーカス時のbackground-color</li>
+    <li>画像の拡大/縮小の禁止</li>
+    <li>コピー＆ペースト時のHTMLスタイル除去（右クリック対応）</li>
+    </ul>
+
+    <div id="main">
+        <textarea class="wyst"></textarea>
+        <textarea class="wysi">icon <img src="./images/icons/3.gif" /></textarea>
+    </div>
+
+
+    <p>
+    <a href="javascript:(function(){%20document.body.contentEditable='true';document.designMode='on';%20alert('DesignMode:%20On');%20void(0);})()">&raquo;Contents Edit</a>
+    <img src="./images/icons/icons.gif" alt="icons" />
+    </p>
+
+<ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms536955(v=vs.85).aspx">onpaste Event &mdash;<cite>MSDN</cite></a></li>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms535220.aspx">clipboardData Object &mdash;<cite>MSDN</cite></a></li>
+<li><a href="http://developer.apple.com/jp/documentation/AppleApplications/Conceptual/SafariJSProgTopics/index.html?http://developer.apple.com/jp/documentation/AppleApplications/Conceptual/SafariJSProgTopics/Tasks/CopyAndPaste.html">JavaScriptからのペーストボードの使用 &mdash;<cite>Web Kit DOM Programming Topics</cite></a></li>
+<li><a href="http://www.quirksmode.org/dom/events/cutcopypaste.html">cut, copy, paste &mdash;<cite>QuirksMode</cite></li>
+</a></ul>
+
+<h3>基本方針</h3>
+<ol>
+<li>textareaにペーストする</li>
+<li>タグが除去されているので、改行タグのみ追加する</li>
+<li>WYSIWYGエリアのキャレット位置に挿入</li>
+</ol>
+
+<ul>
+<li>WYSIWYGエリアでの選択領域は複数ノードにまたがるため、注意が必要。</li>
+<li>閉じタグの判定や正確な位置の取得が面倒なため、execCommandに丸投げ。巧いことしてくれる。</li>
+<li>IEにはinsertHTMLが存在しないため、pasteHTML()を使用。</li>
+</ul>
+
+<h3>WebKit</h3>
+<p>focus()でtextareaにペーストできない。よってクリップボードを利用する。</p>
+<ul>
+<li>セキュリティ上の問題で、onpasteハンドラ内でのみ、クリップボードにアクセスできる。</li>
+<li><code>.bind("paste",function(){ ...goodness... })</code>ではダメ。</li>
+<li><code>preventDefault()</code>しないと2回実行されるよ。</li>
+</ul>
+
+
+<h3>IE</h3>
+<p>IEのclipboardDataオブジェクトはwindowオブジェクトについている。<br />
+あと何故かeventオブジェクトが取れていない。event止めなくても何とかなったのでスルー。</p>
+<pre><code>
+    var rng = document.selection.createRange();
+    rng.execCommand("Paste");
+</code></pre>
+<p>でも行けるが、onpasteハンドラ内だと無限ループになってしまうので×。</p>
+
+
+<h3>Fx</h3>
+<p>pasteイベントからexecCommand()実行するとエラー吐く...</p>
+<p>clipboardを使用するにはabout:configを弄らなければいけない。ユーザーフレンドリーではない。</p>
+
+
+
+<h3>参照</h3>
+<ul>
+<li><a href="http://kb.mozillazine.org/Rich_text_editing">Rich text editing</a> &mdash;<cite>mozillaZine</cite></li>
+<li><a href="https://developer.mozilla.org/en/using_the_clipboard">Using the Clipboard</a> &mdash;<cite>MDN</cite></li>
+<li><a href="https://developer.mozilla.org/en/rich-text_editing_in_mozilla">Rich-Text Editing in Mozilla</a> &mdash;<cite>MDN</cite></li>
+<li><a href="http://developer.apple.com/library/safari/#documentation/AppleApplications/Reference/WebKitDOMRef/index.html">WebKit DOM Reference</a> &mdash;Safari Reference Library</li>
+<li><a href="http://ntt.cc/2008/01/19/copy-paste-javascript-codes-ie-firefox-opera.html">Copy & Paste JavaScript Codes for popular browse like IE,Firefox and opera etc</a></li>
+<li><a href="http://dev.w3.org/2006/webapi/clipops/clipops.html">Clipboard API and events</a></li>
+</ul>
+
+
+
+</body>
+</html>
