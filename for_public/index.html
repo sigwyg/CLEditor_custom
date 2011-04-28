@@ -14,10 +14,10 @@
 <script type="text/javascript">
 $(function(){
         var editors = $("textarea.wysi").cleditor();
-        var titles  = $("textarea.wyst").cleditor({controls: "icon pastetext", height: 63});
+        var titles  = $("textarea.wyst").cleditor({controls: "icon pastetext source", height: 63});
         
         // for "Title" like WYSIWYG-Editor
-        $.each(titles, function(){ cleditor.disableEnterKey(this.doc); })
+        $.each(titles, function(){ $(this.$frame).addClass("forTitle"); });
 
         // Concat CLEditor-Object
         $.merge(editors, titles);
@@ -35,6 +35,12 @@ $(function(){
             var tarFrame = this;
             var tarFC  = tarFrame.contentWindow;
             var tarDoc = tarFC.document;
+
+            // for "Title" like WYSIWYG-Editor
+            if(tarFrame.className == 'forTitle'){
+                cleditor.disableEnterKey(tarDoc); 
+                cleditor.cleanHTML(tarFC); 
+            };
             
             // for disable Image Resizing
             cleditor.disableImgResizing(tarDoc);
@@ -64,7 +70,7 @@ $(function(){
 jQuery.extend(cleditor,{
 
     // Disable Enter-key
-    //  - edDoc = iframe.document
+    //  - edDoc = iframe.contentWindow.document
     disableEnterKey: function(edDoc){
         $(edDoc).bind("keypress", function(e){
             var keycode = (e.keyCode ? e.keyCode : e.which);
@@ -72,8 +78,28 @@ jQuery.extend(cleditor,{
         })
     },
 
+    // Clean HTML
+    //  - edFC = iframe.contentWindow
+    cleanHTML: function(edFC){
+        var edDoc  = edFC.document;
+        var edBody = $(edDoc).find("body")[0];
+        
+        // IE 6,7,8,9
+        if(!jQuery.support.htmlSerialize){
+            $(edDoc).bind("beforedeactivate", function(e){
+                $(edBody).html( $(edBody).html().replace(/<P>|<BR>/g,'') );
+            })
+        }
+        // Other Browser
+        else {
+            $(edFC).bind("blur", function(){  
+                    $(edBody).html( $(edBody).html().replace(/<div>|<br>/g,'') );
+            });
+        }
+    },
+
     // Disable image-resizing with Designmode
-    //  - edDoc = iframe.document
+    //  - edDoc = iframe.contentWindow.document
     //  - WebKit and Opera, No problem
     disableImgResizing: function(edDoc){
         // IE 6,7,8,9
@@ -94,7 +120,7 @@ jQuery.extend(cleditor,{
 
     // 1. Focuse your mind on working-area
     // 2. Change something (background, color, ...etc.)
-    //  - edDoc = iframe.document
+    //  - edFC = iframe.contentWindow
     focuseChange: function(edFC){
         var edDoc  = edFC.document;
         var edBody = $(edDoc).find("body")[0];
@@ -126,6 +152,7 @@ jQuery.extend(cleditor,{
         var edBody     = $(edDoc).find("body")[0];
         var parentBody = $('body', parent.document)[0];
         var textarea   = $('#paste', parentBody)[0];
+        var simple     = edFrame.className == 'forTitle' ? 'yes' : 'no'; 
         
         //make Paste-area
         if(!textarea){
@@ -134,11 +161,11 @@ jQuery.extend(cleditor,{
                             .css({
                                 'position': 'absolute',
                                 'top': '400px',
-                                'left': '600px',
-                                'z-index': '9999',
+                                'left': '-6000px',
+                                'z-index': '0',
                                 'width': '200px',
                                 'height': '200px',
-                                'opacity': '1'
+                                'opacity': '0'
                             })
                             .appendTo(parentBody)
                             ;
@@ -175,7 +202,7 @@ jQuery.extend(cleditor,{
                 
                 // Move Text to WYSIWYG-area
                 setTimeout(function(){
-                    cleditor.moveText(textarea,edFC,edDoc,edBody);
+                    cleditor.moveText(textarea,edFC,edDoc,edBody,simple);
                 }, 5);
 
             }
@@ -203,7 +230,7 @@ jQuery.extend(cleditor,{
 
                 // Move Text to WYSIWYG-area
                 setTimeout(function(){
-                    cleditor.moveText(textarea,edFC,edDoc,edBody,range);
+                    cleditor.moveText(textarea,edFC,edDoc,edBody,range,simple);
                 }, 5);
             
             } 
@@ -261,7 +288,7 @@ jQuery.extend(cleditor,{
         if(cleditor.contextFlag == 'contextmenu'){
             // Move Text to WYSIWYG-area
             setTimeout(function(){ 
-                cleditor.moveText(textarea,edFC,edDoc,edBody,range);
+                cleditor.moveText(textarea,edFC,edDoc,edBody,range,simple);
             }, 5);
         }
         
@@ -275,9 +302,12 @@ jQuery.extend(cleditor,{
     contextFlag: '',
     
     // Move text textarea to WYSIWYG-area
-    moveText: function(textarea,edFC,edDoc,edBody,range){
-        var pasteText  = $(textarea).val().replace(/\r|\n/g, '<br>');
-        var origText   = $(edBody).html();
+    moveText: function(textarea,edFC,edDoc,edBody,range,simple){
+        var origText  = $(edBody).html();
+        var pasteText = simple == 'yes' 
+                        ? $(textarea).val().replace(/\r|\n|<P>|<BR>/g, '')
+                        : $(textarea).val().replace(/\r|\n/g, '<br>')
+                        ;
 
         //for IE
         if(document.selection){ range.pasteHTML( pasteText ); }
@@ -328,11 +358,15 @@ jQuery.extend(cleditor,{
     <li>フォーカス時のbackground-color</li>
     <li>画像の拡大/縮小の禁止</li>
     <li>コピー＆ペースト時のHTMLスタイル除去（右クリック対応）</li>
+    <li>タイトルからHTMLタグ除去(コピペ後など、稀に入り込むことがある?)</li>
     </ul>
 
     <div id="main">
+        <form action="">
         <textarea class="wyst"></textarea>
         <textarea class="wysi">icon <img src="./images/icons/3.gif" /></textarea>
+        <input type="submit" />
+        </form>
     </div>
 
 
