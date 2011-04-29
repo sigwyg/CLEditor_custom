@@ -87,13 +87,14 @@ jQuery.extend(cleditor,{
         // IE 6,7,8,9
         if(!jQuery.support.htmlSerialize){
             $(edDoc).bind("beforedeactivate", function(e){
-                $(edBody).html( $(edBody).html().replace(/<P>|<BR>/g,'') );
+                $(edBody).html( $(edBody).html().replace(/<\/?P>|<BR>/g,'') );
             })
         }
         // Other Browser
         else {
             $(edFC).bind("blur", function(){  
-                    $(edBody).html( $(edBody).html().replace(/<div>|<br>/g,'') );
+                    $(edBody).html( $(edBody).html().replace(/<\/?div>|<br>/g,'') );
+                    console.log('clean!');
             });
         }
     },
@@ -305,7 +306,7 @@ jQuery.extend(cleditor,{
     moveText: function(textarea,edFC,edDoc,edBody,range,simple){
         var origText  = $(edBody).html();
         var pasteText = simple == 'yes' 
-                        ? $(textarea).val().replace(/\r|\n|<P>|<BR>/g, '')
+                        ? $(textarea).val().replace(/\r|\n|<\/?P>|<BR>/g, '')
                         : $(textarea).val().replace(/\r|\n/g, '<br>')
                         ;
 
