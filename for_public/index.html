@@ -41,6 +41,9 @@ $(function(){
                 cleditor.disableEnterKey(tarDoc); 
                 cleditor.cleanHTML(tarFC); 
             };
+
+            // for Preventing Automatic Hyperlinking
+            cleditor.cleanupHyperLink(tarFC);
             
             // for disable Image Resizing
             cleditor.disableImgResizing(tarDoc);
@@ -94,10 +97,35 @@ jQuery.extend(cleditor,{
         else {
             $(edFC).bind("blur", function(){  
                     $(edBody).html( $(edBody).html().replace(/<\/?div>|<br>/g,'') );
-                    console.log('clean!');
             });
         }
     },
+    
+
+    // cleanupHyperLink
+    //  - edFC = iframe.contentWindow
+    //  
+    //  "IE8 below, do not offer a way to disable automatic hyperlink recognition from script in the page."
+    //  - http://blogs.msdn.com/b/ieinternals/archive/2009/09/17/prevent-automatic-hyperlinking-in-contenteditable-html.aspx
+    cleanupHyperLink: function(edFC){
+        var edDoc  = edFC.document;
+        var edBody = $(edDoc).find("body")[0];
+        
+        // IE 6,7,8,9
+        if(!jQuery.support.htmlSerialize){
+            $(edDoc).bind("beforedeactivate", function(e){
+                var range= edDoc.body.createTextRange();
+                range.moveToElementText( edBody );
+                range.select();
+                
+                edDoc.execCommand("unlink", false, null);
+            })
+        }
+        // Other Browser
+        else {
+        }
+    },
+    
 
     // Disable image-resizing with Designmode
     //  - edDoc = iframe.contentWindow.document
