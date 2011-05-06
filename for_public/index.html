@@ -33,26 +33,27 @@ $(function(){
         var ed = $("div.cleditorMain iframe");
         $.each(ed, function(){
             var tarFrame = this;
-            var tarFC  = tarFrame.contentWindow;
-            var tarDoc = tarFC.document;
+            var tarFC   = tarFrame.contentWindow;
+            var tarDoc  = tarFC.document;
+            var tarBody = $(tarDoc).find("body")[0];
 
             // for "Title" like WYSIWYG-Editor
             if(tarFrame.className == 'forTitle'){
                 cleditor.disableEnterKey(tarDoc); 
-                cleditor.cleanHTML(tarFC); 
+                cleditor.cleanHTML(tarFC, tarDoc, tarBody); 
             };
 
             // for Preventing Automatic Hyperlinking
-            cleditor.cleanupHyperLink(tarFC);
+            //cleditor.cleanupHyperLink(tarFC);
             
             // for disable Image Resizing
             cleditor.disableImgResizing(tarDoc);
 
             // for focusing your mind on working-area
-            cleditor.focuseChange(tarFC);
+            cleditor.focuseChange(tarFC, tarDoc, tarBody);
 
             // for Paste-text with delete HTML-Tag & Style
-            cleditor.cleanupPasteText(tarFrame);
+            cleditor.cleanupPasteText(tarFrame, tarFC, tarDoc, tarBody);
         })
 
         // Sample
@@ -82,10 +83,12 @@ jQuery.extend(cleditor,{
     },
 
     // Clean HTML
-    //  - edFC = iframe.contentWindow
-    cleanHTML: function(edFC){
-        var edDoc  = edFC.document;
-        var edBody = $(edDoc).find("body")[0];
+    //  - edFC   = iframe.contentWindow
+    //  - edDoc  = edFC.document
+    //  - edbody = $(edDoc).find("body")[0]
+    cleanHTML: function(edFC, edDoc, edBody){
+        // var edDoc  = edFC.document;
+        // var edBody = $(edDoc).find("body")[0];
         
         // IE 6,7,8,9
         if(!jQuery.support.htmlSerialize){
@@ -103,13 +106,13 @@ jQuery.extend(cleditor,{
     
 
     // cleanupHyperLink
-    //  - edFC = iframe.contentWindow
+    //  - edFC   = iframe.contentWindow
+    //  - edDoc  = edFC.document
+    //  - edbody = $(edDoc).find("body")[0]
     //  
     //  "IE8 below, do not offer a way to disable automatic hyperlink recognition from script in the page."
     //  - http://blogs.msdn.com/b/ieinternals/archive/2009/09/17/prevent-automatic-hyperlinking-in-contenteditable-html.aspx
-    cleanupHyperLink: function(edFC){
-        var edDoc  = edFC.document;
-        var edBody = $(edDoc).find("body")[0];
+    cleanupHyperLink: function(edFC, edDoc, edBody){
         
         // IE 6,7,8,9
         if(!jQuery.support.htmlSerialize){
@@ -150,9 +153,7 @@ jQuery.extend(cleditor,{
     // 1. Focuse your mind on working-area
     // 2. Change something (background, color, ...etc.)
     //  - edFC = iframe.contentWindow
-    focuseChange: function(edFC){
-        var edDoc  = edFC.document;
-        var edBody = $(edDoc).find("body")[0];
+    focuseChange: function(edFC, edDoc, edBody){
         
         // IE 6,7,8,9
         if(!jQuery.support.htmlSerialize){
@@ -175,10 +176,7 @@ jQuery.extend(cleditor,{
     // 2. keydown -> focus(pasteText)
     // 3. onpaste -> overwrite textarea with clipboardData
     // 4. setTimeout(keydown) and setTimeout(onpaste)
-    cleanupPasteText: function(edFrame){
-        var edFC       = edFrame.contentWindow;
-        var edDoc      = edFC.document;
-        var edBody     = $(edDoc).find("body")[0];
+    cleanupPasteText: function(edFrame, edFC, edDoc, edBody){
         var parentBody = $('body', parent.document)[0];
         var textarea   = $('#paste', parentBody)[0];
         var simple     = edFrame.className == 'forTitle' ? 'yes' : 'no'; 
