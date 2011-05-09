@@ -26,6 +26,8 @@ $(function(){
         $.cleditor.buttons.icon.popupContent.bind("click", function(){
             setTimeout(function(){
                 $.each(editors, function(){ cleditor.disableImgResizing(this.doc); });
+                
+                // $(this.doc).trigger('keydown', [{preventDefault:function(){},keyCode:39}]);
             },500)
         })
 
@@ -44,7 +46,7 @@ $(function(){
             };
 
             // for Preventing Automatic Hyperlinking
-            cleditor.cleanupHyperLink(tarFC);
+            cleditor.cleanupHyperLink(tarFC, tarDoc, tarBody);
             
             // for disable Image Resizing
             cleditor.disableImgResizing(tarDoc);
