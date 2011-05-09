@@ -96,12 +96,6 @@ jQuery.extend(cleditor,{
                 $(edBody).html( $(edBody).html().replace(/<\/?P>|<BR>/g,'') );
             })
         }
-        // Other Browser
-        else {
-            $(edFC).bind("blur", function(){  
-                    $(edBody).html( $(edBody).html().replace(/<\/?div>|<br>/g,'') );
-            });
-        }
     },
     
 
@@ -136,10 +130,10 @@ jQuery.extend(cleditor,{
     disableImgResizing: function(edDoc){
         // IE 6,7,8,9
         if(!jQuery.support.htmlSerialize){
-            var imgs = $("img", edDoc);
-            $.each(imgs,function(){
-                this.attachEvent("onresizestart", function(e) { e.returnValue = false; }, false);
-            });
+             var imgs = $("img", edDoc);
+             $.each(imgs,function(){
+                 this.attachEvent("onresizestart", function(e) { e.returnValue = false; }, false);
+             });
         }
         // Mozilla, Opera
         if(jQuery.support.checkOn && jQuery.support.htmlSerialize){
@@ -389,7 +383,7 @@ jQuery.extend(cleditor,{
     </ul>
 
     <div id="main">
-        <form action="">
+        <form action="./index.html" method="post">
         <textarea class="wyst"></textarea>
         <textarea class="wysi">icon <img src="./images/icons/3.gif" /></textarea>
         <input type="submit" />
@@ -445,6 +439,11 @@ jQuery.extend(cleditor,{
 <p>pasteイベントからexecCommand()実行するとエラー吐く...</p>
 <p>clipboardを使用するにはabout:configを弄らなければいけない。ユーザーフレンドリーではない。</p>
 
+
+<h3>補足(cleditor)</h3>
+<p>ポップアップのDivは使い回し。
+ポップアップそのものは「$.cleditor.buttons.icon.popupContent.bind("click", ...」等で取れるが、
+そこから対象editorは取れない。挿入先の判定はrangeに頼っている模様。</p>
 
 
 <h3>参照</h3>
