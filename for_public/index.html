@@ -71,9 +71,39 @@ $(function(){
 
 // --------------------------------------------------------------
 // Functions
+//   - modeChange()
+//   - disableEnterKey()
+//   - cleanHTML()
+//   - cleanupHyperLink()
+//   - disableImgResizing() 
+//   - focuseChange()
+//   - cleanupPasteText()
+//   - getClipText()
+//   - onpaste()
+//   - moveText()
 // --------------------------------------------------------------
 
 jQuery.extend(cleditor,{
+
+    // modeChange(editors)
+    //  - 
+    modeChange: function(link){
+        var clmain  = $("div.cleditorMain");
+        var toolbar = $(clmain).find("div.cleditorToolbar");
+        var iframe  = $(clmain).find("iframe");
+        var erasure = $.merge(toolbar, iframe);
+        var cltext  = $(clmain).find("textarea");
+
+        $(erasure).toggle();
+        $(cltext).toggle();
+
+        if(link){
+            (link.innerHTML).match(/Simple/) 
+                ? link.innerHTML = (link.innerHTML).replace("Simple", "Rich")
+                : link.innerHTML = (link.innerHTML).replace("Rich", "Simple")
+                ;
+        }
+    },
 
     // Disable Enter-key
     //  - edDoc = iframe.contentWindow.document
@@ -382,10 +412,12 @@ jQuery.extend(cleditor,{
     <li>画像の拡大/縮小の禁止</li>
     <li>コピー＆ペースト時のHTMLスタイル除去（右クリック対応）</li>
     <li>タイトルからHTMLタグ除去(コピペ後など、稀に入り込むことがある?)</li>
+    <li>Simpleモードに切り替えるボタン（リンク）</li>
     </ul>
 
     <div id="main">
         <form action="./index.html" method="post">
+            <p><a href="" onclick="cleditor.modeChange(this);return false;">Simpleモード</a></p>
         <textarea class="wyst"></textarea>
         <textarea class="wysi">icon <img src="./images/icons/3.gif" /></textarea>
         <input type="submit" />
